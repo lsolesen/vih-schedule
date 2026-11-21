@@ -1,0 +1,1081 @@
+{
+  "teachers": [
+    {
+      "id": "AB",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "ID",
+      "pct": 80,
+      "annualUv": 616,
+      "targetWeekly": 8.3,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "JH",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "JK",
+      "pct": 85,
+      "annualUv": 654.5,
+      "targetWeekly": 8.85,
+      "leavePhases": {
+        "E2026": [
+          "E1",
+          "E2"
+        ],
+        "F2026": []
+      },
+      "note": "Orlov efterår",
+      "wishNotes": ""
+    },
+    {
+      "id": "JD",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "KL",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [
+          "E2"
+        ],
+        "F2026": []
+      },
+      "note": "Efterår kun t.o.m. uge 41",
+      "wishNotes": "Kun t.o.m. uge 41 i efteråret"
+    },
+    {
+      "id": "ML",
+      "pct": 80,
+      "annualUv": 616,
+      "targetWeekly": 8.3,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": "YoSurf: kun yoga-delen. Dance: maks 1/3 af timer"
+    },
+    {
+      "id": "MM",
+      "pct": 63,
+      "annualUv": 485.1,
+      "targetWeekly": 7.2,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "MO",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "MB",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": "DGL: gerne alene"
+    },
+    {
+      "id": "TH",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": "YoSurf: ikke yoga-delen. MTB/Psykologi: gerne dele med én"
+    },
+    {
+      "id": "TG",
+      "pct": 85,
+      "annualUv": 654.5,
+      "targetWeekly": 8.85,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "JN",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": [
+          "F1",
+          "F2a",
+          "F2b",
+          "F3"
+        ]
+      },
+      "note": "Orlov fra uge 6 forår",
+      "wishNotes": ""
+    },
+    {
+      "id": "NM",
+      "pct": 85,
+      "annualUv": 654.5,
+      "targetWeekly": 8.85,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "SB",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "DJ",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": "YoSurf: kun klatredel"
+    },
+    {
+      "id": "MV",
+      "pct": 50,
+      "annualUv": 385,
+      "targetWeekly": 5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": "DGL: gerne musik. Havkajak: som del af team"
+    },
+    {
+      "id": "MH",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 10.5,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": "DGL: evt. dele"
+    },
+    {
+      "id": "CE",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 0,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "LO",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 0,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    },
+    {
+      "id": "SI",
+      "pct": 100,
+      "annualUv": 770,
+      "targetWeekly": 0,
+      "leavePhases": {
+        "E2026": [],
+        "F2026": []
+      },
+      "note": "",
+      "wishNotes": ""
+    }
+  ],
+  "specialTasks": [
+    {
+      "id": "st1",
+      "sem": "E2026",
+      "name": "U38 Surftur",
+      "uv": 21,
+      "teachers": [
+        "KL",
+        "SB",
+        "MH"
+      ]
+    },
+    {
+      "id": "st2",
+      "sem": "E2026",
+      "name": "U38 Chamonix",
+      "uv": 21,
+      "teachers": [
+        "MB",
+        "TH",
+        "NM"
+      ]
+    },
+    {
+      "id": "st3",
+      "sem": "E2026",
+      "name": "U38 Sæt pris på Danmark",
+      "uv": 15,
+      "teachers": [
+        "AB",
+        "ID",
+        "MO",
+        "DJ"
+      ]
+    },
+    {
+      "id": "st4",
+      "sem": "E2026",
+      "name": "U42 Frivillighedsuge",
+      "uv": 15,
+      "teachers": [
+        "AB",
+        "ID",
+        "JH",
+        "JD",
+        "ML",
+        "MM",
+        "TH",
+        "TG",
+        "JN",
+        "SB",
+        "MV",
+        "MH"
+      ]
+    },
+    {
+      "id": "st5",
+      "sem": "E2026",
+      "name": "U46 La Santa Efterår",
+      "uv": 21,
+      "teachers": [
+        "AB",
+        "JH",
+        "JD",
+        "ML",
+        "MM",
+        "MB",
+        "JN",
+        "NM"
+      ]
+    },
+    {
+      "id": "st6",
+      "sem": "E2026",
+      "name": "U49 Forræder",
+      "uv": 12,
+      "teachers": [
+        "ID",
+        "JH",
+        "JD",
+        "ML",
+        "MM",
+        "MO",
+        "TH",
+        "TG",
+        "JN",
+        "DJ",
+        "MH"
+      ]
+    },
+    {
+      "id": "st7",
+      "sem": "F2026",
+      "name": "U05 Performanceuge",
+      "uv": 15,
+      "teachers": [
+        "ID",
+        "JK",
+        "ML",
+        "MO",
+        "MB",
+        "NM",
+        "SB",
+        "DJ"
+      ]
+    },
+    {
+      "id": "st8",
+      "sem": "F2026",
+      "name": "U09 Playitas Forår",
+      "uv": 21,
+      "teachers": [
+        "AB",
+        "ID",
+        "JD",
+        "KL",
+        "MB"
+      ]
+    },
+    {
+      "id": "st9",
+      "sem": "F2026",
+      "name": "U09 Skitur",
+      "uv": 18,
+      "teachers": [
+        "JH",
+        "ML",
+        "MM",
+        "TH",
+        "MH"
+      ]
+    },
+    {
+      "id": "st10",
+      "sem": "F2026",
+      "name": "U14 Påskedage",
+      "uv": 12,
+      "teachers": [
+        "JH",
+        "JD",
+        "KL",
+        "MO",
+        "TG"
+      ]
+    },
+    {
+      "id": "st11",
+      "sem": "F2026",
+      "name": "U21 Sort Fjord",
+      "uv": 6,
+      "teachers": [
+        "JN"
+      ]
+    },
+    {
+      "id": "st12",
+      "sem": "F2026",
+      "name": "U23 Adventuretur",
+      "uv": 18,
+      "teachers": [
+        "JK",
+        "TH",
+        "TG",
+        "SB",
+        "DJ",
+        "MV",
+        "MH"
+      ]
+    },
+    {
+      "id": "st13",
+      "sem": "F2026",
+      "name": "U24 Folkemøde",
+      "uv": 12,
+      "teachers": [
+        "AB",
+        "ID",
+        "JD",
+        "KL",
+        "MO"
+      ]
+    }
+  ],
+  "competencies": {
+    "Fodbold ⚽": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [
+        "KL",
+        "JH"
+      ],
+      "canTeach": []
+    },
+    "Fodbold & Pigefodbold ⚽": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [
+        "KL",
+        "JH"
+      ],
+      "canTeach": []
+    },
+    "Håndbold 🤾": {
+      "leads": [
+        "MH"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Padel (+1000 DKK) 🎾": {
+      "leads": [
+        "MO"
+      ],
+      "primary": [
+        "MM"
+      ],
+      "canTeach": [
+        "JD",
+        "TG"
+      ]
+    },
+    "Fitness 360° 😅": {
+      "leads": [
+        "AB"
+      ],
+      "primary": [
+        "MB"
+      ],
+      "canTeach": [
+        "NM",
+        "ML",
+        "JH"
+      ]
+    },
+    "COPS - Polititræning 👮": {
+      "leads": [],
+      "primary": [
+        "JN",
+        "SB"
+      ],
+      "canTeach": [
+        "MB",
+        "NM"
+      ]
+    },
+    "Adventurerace 🗺️": {
+      "leads": [],
+      "primary": [
+        "JH",
+        "TH"
+      ],
+      "canTeach": [
+        "DJ",
+        "MV"
+      ]
+    },
+    "YoSurf'n'Climb 🏄": {
+      "leads": [
+        "TG"
+      ],
+      "primary": [
+        "TH"
+      ],
+      "canTeach": [
+        "ML",
+        "DJ",
+        "MV"
+      ]
+    },
+    "Yoga - Hatha, Aerial & Akro 🧘": {
+      "leads": [
+        "ML"
+      ],
+      "primary": [],
+      "canTeach": [
+        "AB"
+      ]
+    },
+    "Bold 360": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "MV",
+        "MO",
+        "MM",
+        "SB"
+      ]
+    },
+    "Fitness Holdtræning 🕺🏼": {
+      "leads": [],
+      "primary": [
+        "AB",
+        "ML"
+      ],
+      "canTeach": []
+    },
+    "Ketsjer 360": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [
+        "MO"
+      ],
+      "canTeach": [
+        "MM"
+      ]
+    },
+    "Crossfitness 🏋️": {
+      "leads": [
+        "MB"
+      ],
+      "primary": [
+        "MH"
+      ],
+      "canTeach": []
+    },
+    "Havkajak 🚣‍♀️": {
+      "leads": [
+        "TH"
+      ],
+      "primary": [
+        "DJ"
+      ],
+      "canTeach": [
+        "JH",
+        "TG",
+        "MV"
+      ]
+    },
+    "Volleyball & Beachvolley 🏐": {
+      "leads": [
+        "TG"
+      ],
+      "primary": [
+        "MH"
+      ],
+      "canTeach": [
+        "MO"
+      ]
+    },
+    "Adventure 360° 🧗": {
+      "leads": [],
+      "primary": [
+        "TG",
+        "MV",
+        "DJ"
+      ],
+      "canTeach": [
+        "TH",
+        "NM",
+        "JH"
+      ]
+    },
+    "Multisport ♟️": {
+      "leads": [
+        "KL"
+      ],
+      "primary": [
+        "JD",
+        "MH"
+      ],
+      "canTeach": [
+        "AB",
+        "JK",
+        "TG"
+      ]
+    },
+    "International Class 🏳️‍🌈": {
+      "leads": [
+        "AB"
+      ],
+      "primary": [],
+      "canTeach": [
+        "MO"
+      ]
+    },
+    "Medier & Kommunikation 🗒️": {
+      "leads": [
+        "ID"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Politi 👮": {
+      "leads": [
+        "JN"
+      ],
+      "primary": [
+        "MO"
+      ],
+      "canTeach": [
+        "MB"
+      ]
+    },
+    "Ernæring & Forbrænding 🥕": {
+      "leads": [
+        "JH"
+      ],
+      "primary": [],
+      "canTeach": [
+        "MH"
+      ]
+    },
+    "Sportspsykologi & Teamplayer 🤯": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [
+        "MM"
+      ],
+      "canTeach": []
+    },
+    "Personlig power 🦸": {
+      "leads": [
+        "KL"
+      ],
+      "primary": [],
+      "canTeach": [
+        "TH"
+      ]
+    },
+    "Friluftsliv 🌳": {
+      "leads": [
+        "TH"
+      ],
+      "primary": [
+        "NM",
+        "MV",
+        "DJ"
+      ],
+      "canTeach": [
+        "TG"
+      ]
+    },
+    "FysioFit & Test 🧑‍🔬": {
+      "leads": [
+        "MH"
+      ],
+      "primary": [],
+      "canTeach": [
+        "MM"
+      ]
+    },
+    "Musik 🎶": {
+      "leads": [
+        "DJ"
+      ],
+      "primary": [
+        "MV"
+      ],
+      "canTeach": [
+        "JN"
+      ]
+    },
+    "Test & træning 🧑‍🔬": {
+      "leads": [
+        "MM"
+      ],
+      "primary": [
+        "MH"
+      ],
+      "canTeach": [
+        "JH"
+      ]
+    },
+    "Psykologi 🧠": {
+      "leads": [
+        "TH"
+      ],
+      "primary": [
+        "MV"
+      ],
+      "canTeach": []
+    },
+    "Bryg & Bål 🔥": {
+      "leads": [
+        "TG"
+      ],
+      "primary": [],
+      "canTeach": [
+        "TH",
+        "DJ"
+      ]
+    },
+    "Badminton & Racket Sports 🏸": {
+      "leads": [
+        "MO"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Power Fitness 🏋️": {
+      "leads": [],
+      "primary": [
+        "KL",
+        "AB"
+      ],
+      "canTeach": []
+    },
+    "Basketball 🏀": {
+      "leads": [
+        "MM"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Bootcamp 🥵": {
+      "leads": [],
+      "primary": [
+        "MB"
+      ],
+      "canTeach": []
+    },
+    "Cardio Attack ❤️": {
+      "leads": [],
+      "primary": [
+        "MB"
+      ],
+      "canTeach": [
+        "AB",
+        "JH"
+      ]
+    },
+    "Dance 🕺🏼": {
+      "leads": [
+        "AB"
+      ],
+      "primary": [
+        "ML"
+      ],
+      "canTeach": []
+    },
+    "Fighter 🥷🏻": {
+      "leads": [
+        "JN"
+      ],
+      "primary": [],
+      "canTeach": [
+        "DJ"
+      ]
+    },
+    "Futsal ⚽": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Functional Training 😅": {
+      "leads": [],
+      "primary": [
+        "AB"
+      ],
+      "canTeach": [
+        "NM",
+        "SB"
+      ]
+    },
+    "DGL": {
+      "leads": [],
+      "primary": [
+        "ID",
+        "JH",
+        "KL",
+        "MO",
+        "MB",
+        "TH",
+        "NM",
+        "SB"
+      ],
+      "canTeach": [
+        "AB",
+        "JD"
+      ]
+    },
+    "Fællessang": {
+      "leads": [
+        "JN"
+      ],
+      "primary": [
+        "DJ",
+        "MV"
+      ],
+      "canTeach": [
+        "ID",
+        "KL"
+      ]
+    },
+    "Beach Sport": {
+      "leads": [],
+      "primary": [
+        "MH"
+      ],
+      "canTeach": []
+    },
+    "Balanced Body & Movement": {
+      "leads": [],
+      "primary": [
+        "ML",
+        "AB"
+      ],
+      "canTeach": []
+    },
+    "Fodbold & Playertek ⚽": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Game changer 🎲": {
+      "leads": [],
+      "primary": [
+        "TG",
+        "JK",
+        "MB"
+      ],
+      "canTeach": []
+    },
+    "Indoor Bike Xperience": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "AB",
+        "JH"
+      ]
+    },
+    "Løb & Løbetræning 👟": {
+      "leads": [],
+      "primary": [
+        "TG",
+        "MO"
+      ],
+      "canTeach": []
+    },
+    "Mountainbike & Trail Surfing 🚵": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "MM",
+        "DJ"
+      ]
+    },
+    "OCR & Fun Run 🏃‍♂️": {
+      "leads": [
+        "NM"
+      ],
+      "primary": [],
+      "canTeach": [
+        "TH",
+        "MV",
+        "DJ"
+      ]
+    },
+    "Styrke & Calisthenics": {
+      "leads": [],
+      "primary": [
+        "KL",
+        "JN"
+      ],
+      "canTeach": []
+    },
+    "Styrke & Power Performance": {
+      "leads": [],
+      "primary": [
+        "JN"
+      ],
+      "canTeach": []
+    },
+    "Styrketræning 💪": {
+      "leads": [],
+      "primary": [
+        "JN",
+        "MH",
+        "KL"
+      ],
+      "canTeach": []
+    },
+    "Toughest 🧼": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "JK",
+        "TG",
+        "MB",
+        "SB",
+        "MV",
+        "NM",
+        "JN"
+      ]
+    },
+    "Inspirationsfag 1": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "DJ"
+      ]
+    },
+    "Inspirationsfag 2": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "SB",
+        "MV"
+      ]
+    },
+    "Inspirationsfag 3": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "JH",
+        "NM"
+      ]
+    },
+    "Inspirationsfag 4": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "JK",
+        "JN"
+      ]
+    },
+    "Inspirationsfag 5": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "JD",
+        "TG"
+      ]
+    },
+    "Inspirationsfag 6": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "KL",
+        "TH"
+      ]
+    },
+    "Inspirationsfag 7": {
+      "leads": [],
+      "primary": [
+        "ID"
+      ],
+      "canTeach": [
+        "MH"
+      ]
+    },
+    "Inspirationsfag 8": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "MO"
+      ]
+    },
+    "Body & Mind 😶‍🌫️": {
+      "leads": [],
+      "primary": [
+        "ML"
+      ],
+      "canTeach": [
+        "JH"
+      ]
+    },
+    "Event Maker": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "ML",
+        "TG"
+      ]
+    },
+    "Fitnessinstruktør 🏋️": {
+      "leads": [],
+      "primary": [
+        "AB",
+        "JH"
+      ],
+      "canTeach": []
+    },
+    "Fodboldtræner & Performance ⚽": {
+      "leads": [
+        "JD"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Gør en forskel 🌸": {
+      "leads": [],
+      "primary": [],
+      "canTeach": [
+        "TG",
+        "TH",
+        "MV",
+        "DJ"
+      ]
+    },
+    "Leadership": {
+      "leads": [],
+      "primary": [
+        "JK"
+      ],
+      "canTeach": [
+        "TG"
+      ]
+    },
+    "Nature Flow & Focus 🌳": {
+      "leads": [
+        "TH"
+      ],
+      "primary": [],
+      "canTeach": []
+    }
+  }
+}

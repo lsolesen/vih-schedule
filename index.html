@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VIH Fagfordeling</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-meta">
+        <span class="brand-tag">VEJLE IDRÆTSHØJSKOLE</span>
+        <span id="data-source-badge" class="source-badge" title=""></span>
+      </div>
+      <h1>FAG<span>FORDELING</span></h1>
+      <p>Planlæg hovedlærere, deling/dublering og ugetimer på tværs af perioder</p>
+    </div>
+
+    <div class="topbar-actions">
+      <div class="semester-switch" role="tablist">
+        <button class="sem-btn" data-semester="E2026">🍂 Efterår 2026</button>
+        <button class="sem-btn active" data-semester="F2026">🌱 Forår 2026/27</button>
+      </div>
+
+      <div class="action-group">
+        <button id="btn-auto-assign" class="btn btn-primary" title="Fordel alle ikke-låste pladser (mål 10,5t, spænd 9-12t)">
+          ✨ Foreslå
+        </button>
+        <button id="btn-clear-unlocked" class="btn btn-secondary" title="Fjern alle lærertildelinger der ikke er låst">
+          🧹 Ryd
+        </button>
+        <button id="btn-unlock-all" class="btn btn-ghost" title="Lås alle tildelinger op">
+          🔓 Lås alle op
+        </button>
+        <button id="btn-export-plan" class="btn btn-secondary">⬇️ Eksportér</button>
+        <button id="btn-sync-wishes" class="btn btn-secondary" title="Hent seneste lærerønsker fra dine CSV-links">🔄 Opdatér ønsker</button>
+        <button id="btn-reset" class="btn btn-ghost" title="Indlæser plan.json og settings.json fra mappen">↺ Hent fra filer</button>      </div>
+    </div>
+  </header>
+
+  <nav class="subnav">
+    <button class="tab-btn active" data-tab="board">📅 Fagoversigt & Tidslinje</button>
+    <button class="tab-btn" data-tab="profile">👤 Lærerprofil & Ønske-overblik</button>
+    <button class="tab-btn" data-tab="competencies">🎯 Fagkompetencer & Hovedlærere</button>
+    <button class="tab-btn" data-tab="teachers">⏱️ Arbejdstid, Rejser & Normer</button>
+    <button class="tab-btn" data-tab="import-wishes">📋 Importér Filer</button>
+  </nav>
+
+  <main class="container">
+    <!-- FANE 1: FAGOVERSIGT & TIDSLINJE -->
+    <section id="tab-board" class="tab-panel active">
+      <!-- Live Lærer-timebarometer -->
+      <div class="teacher-strip-wrapper">
+        <div class="strip-header">
+          <div>
+            <h2>Ugetimer pr. lærer — <span id="current-sem-label">Forår 2026/27</span></h2>
+            <span class="hint">Acceptabelt spænd: 9–12 t/uge (fuldtid) • Klik på en lærer for at åbne lærerprofil</span>
+          </div>
+          <div class="legend">
+            <span class="pill pill-low">Under spænd (&lt; 9t)</span>
+            <span class="pill pill-high">Over spænd (&gt; 12t)</span>
+            <span class="pill pill-locked">🔒 Låst på fag</span>
+          </div>
+        </div>
+        <div id="teacher-barometer" class="teacher-barometer"></div>
+      </div>
+
+      <!-- Sammenklappeligt panel til periode-udfordringer -->
+      <div id="diagnostics-panel" class="diagnostics-panel"></div>
+
+      <!-- Samlet semester-container (Banner øverst + DGL/Fællessang + Tidslinje) -->
+      <div id="periods-container"></div>
+    </section>
+
+    <!-- FANE 2: LÆRERPROFIL & ØNSKE-OVERBLIK -->
+    <section id="tab-profile" class="tab-panel">
+      <div class="card-box">
+        <div class="box-header">
+          <div>
+            <h2>Lærerprofil: Dine vurderinger vs. Lærerens ønsker & Skema</h2>
+            <p>Vælg en lærer herunder for at se hovedfag, kompetencer, egne fagønsker og timefordeling i hver eneste delperiode.</p>
+          </div>
+          <select id="profile-teacher-select" class="input-field profile-select"></select>
+        </div>
+        <div id="teacher-profile-content"></div>
+      </div>
+    </section>
+
+    <!-- FANE 3: FAGKOMPETENCER & HOVEDLÆRERE -->
+    <section id="tab-competencies" class="tab-panel">
+      <div class="card-box">
+        <div class="box-header">
+          <div>
+            <h2>Hovedlærere & Lærerkompetencer</h2>
+            <p>Klik på en celle for at skifte niveau: <strong>—</strong> → <span class="badge-can">✓ Kan dække</span> → <span class="badge-prim">★ Mest oplagt</span> → <span class="badge-lead">👑 Hovedlærer</span>.</p>
+          </div>
+          <div class="action-group">
+            <input type="text" id="comp-search" placeholder="Søg på fag eller lærer..." class="input-field" />
+            <button id="btn-export-settings" class="btn btn-secondary">⬇️ Eksportér settings.json</button>
+          </div>
+        </div>
+        <div class="table-wrap matrix-wrap">
+          <table class="data-table matrix-table" id="competency-matrix"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- FANE 4: ARBEJDSTID, REJSER & NORMER -->
+    <section id="tab-teachers" class="tab-panel">
+      <div class="card-box">
+        <div class="box-header">
+          <div>
+            <h2>Arbejdstid, Rejser/Temauger & Ugentlige Målnormer</h2>
+            <p>Uv-timer på rejser og temauger trækkes fra først, så du ser hver lærers reelle ugetimer i skemaet.</p>
+          </div>
+          <button id="btn-add-special" class="btn btn-primary">+ Tilføj rejse / temauge</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="teacher-hours-table">
+            <thead>
+              <tr>
+                <th>Lærer</th>
+                <th>Ansættelse</th>
+                <th>Årlig Uv</th>
+                <th>Rejser / Tema</th>
+                <th>Målnorm (t/uge)</th>
+                <th>Gns. tildelt</th>
+                <th>Timer pr. delfase</th>
+                <th>Orlov / Note</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <h3 class="mt-24">Registrerede rejser & temauger</h3>
+        <div id="special-tasks-list" class="special-tasks-grid"></div>
+      </div>
+    </section>
+
+    <!-- FANE 5: IMPORTÉR FILER & LÆRERØNSKER -->
+    <section id="tab-import-wishes" class="tab-panel">
+      <div class="card-box">
+        <h2>Importér Lærerønsker fra Google Sheets (CSV)</h2>
+        <p>Kopiér rækkerne fra fanen <em>Ønsker E2026</em> eller <em>Ønsker F2026</em> (inkl. header-rækken med <code>AB/10,5</code>) og sæt dem ind herunder.</p>
+        
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+          <label style="font-size:13px;">
+            <strong>🍂 Efterår 2026 CSV-link:</strong>
+            <input type="text" id="wishes-url-e2026" class="input-field" style="width:100%; margin-top:4px;" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" />
+          </label>
+          <label style="font-size:13px;">
+            <strong>🌱 Forår 2026/27 CSV-link:</strong>
+            <input type="text" id="wishes-url-f2026" class="input-field" style="width:100%; margin-top:4px;" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" />
+          </label>
+        </div>
+
+        <div class="action-group mt-12" style="margin-bottom: 24px;">
+          <button id="btn-save-and-sync-urls" class="btn btn-primary">🔄 Gem links & opdatér ønsker nu</button>
+        </div>
+
+        <div class="import-controls" style="display:flex; gap:10px; margin-top:8px;">
+          <select id="import-target-sem" class="input-field">
+            <option value="E2026">Efterår 2026</option>
+            <option value="F2026">Forår 2026/27</option>
+          </select>
+          <input type="file" id="csv-wishes-file" accept=".csv" class="input-field" />
+        </div>
+        <textarea id="paste-wishes-area" rows="6" class="textarea-field" placeholder="Indsæt tab- eller kommasepareret CSV-tekst her for at indlæse manuelle ønsker..."></textarea>
+        <div class="mt-12">
+          <button id="btn-parse-wishes" class="btn btn-secondary">Indlæs CSV-ønsker manuelt</button>
+        </div>
+      </div>
+
+      <div class="card-box" style="margin-top: 20px;">
+        <h2>Manuel indlæsning af JSON-filer</h2>
+        <p>Appen læser automatisk <code>plan.json</code> og <code>settings.json</code> fra din mappe ved opstart. Hvis du vil indlæse en fil manuelt (f.eks. for at gendanne en bestemt version), kan du gøre det her:</p>
+        <div class="import-controls" style="display:flex; align-items:center; gap:14px; margin-top:12px;">
+          <label class="btn btn-secondary" style="cursor:pointer;">
+            ⬆️ Vælg JSON-fil
+            <input type="file" id="input-import-json" accept=".json" hidden />
+          </label>
+          <span id="import-json-status" class="hint">Ingen fil valgt</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL TIL TILDELING, DELING & DUBLERING -->
+  <div id="course-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <span id="modal-block-tag" class="modal-tag">BLOK</span>
+          <h2 id="modal-course-title">Fagnavn</h2>
+        </div>
+        <button id="modal-close" class="btn-icon">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row" style="justify-content: space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <label for="modal-hours">Fagets timetal:</label>
+            <input type="number" id="modal-hours" step="0.25" min="0.25" max="15" class="input-field small-input" />
+            <span class="hint">t/uge</span>
+          </div>
+          <label class="cancel-toggle">
+            <input type="checkbox" id="modal-canceled" /> 🚫 Aflys fag
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>1. Antal lærere på faget:</label>
+          <div class="mode-grid mode-grid-3" id="modal-teacher-count-group">
+            <button type="button" class="mode-card active" data-count="1">
+              <strong>1 lærer</strong>
+              <span>Én underviser på holdet</span>
+            </button>
+            <button type="button" class="mode-card" data-count="2">
+              <strong>2 lærere</strong>
+              <span>To undervisere på faget</span>
+            </button>
+            <button type="button" class="mode-card" data-count="3">
+              <strong>3 lærere</strong>
+              <span>Tre undervisere på faget</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group" id="modal-split-type-wrap" style="display: none;">
+          <label>2. Hvordan fordeles timerne? <span class="hint">(kan tilpasses individuelt herunder)</span></label>
+          <div class="mode-grid mode-grid-3" id="modal-split-type-group">
+            <button type="button" class="mode-card active" data-split="split">
+              <strong>Delt</strong>
+              <span>Timerne deles mellem lærerne</span>
+            </button>
+            <button type="button" class="mode-card" data-split="partial">
+              <strong>Delvist dubleret</strong>
+              <span>Lærer 1: 100 % • Øvrige: 50 %</span>
+            </button>
+            <button type="button" class="mode-card" data-split="double">
+              <strong>Dubleret</strong>
+              <span>Parallelle hold (100 % hver)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="assignments-editor">
+          <div class="assign-slot" id="slot-1-wrap">
+            <label>Lærer 1:</label>
+            <select id="modal-teacher-1" class="input-field"></select>
+            <div class="share-input">
+              <input type="number" id="modal-hours-1" step="0.25" min="0" class="input-field tiny-input" />
+              <span>t/uge</span>
+              <label class="slot-lock-lbl" title="Lås denne lærer fast på faget"><input type="checkbox" id="modal-lock-1" /> 🔒</label>
+            </div>
+          </div>
+
+          <div class="assign-slot" id="slot-2-wrap" style="display: none;">
+            <label>Lærer 2:</label>
+            <select id="modal-teacher-2" class="input-field"></select>
+            <div class="share-input">
+              <input type="number" id="modal-hours-2" step="0.25" min="0" class="input-field tiny-input" />
+              <span>t/uge</span>
+              <label class="slot-lock-lbl" title="Lås denne lærer fast på faget"><input type="checkbox" id="modal-lock-2" /> 🔒</label>
+            </div>
+          </div>
+
+          <div class="assign-slot" id="slot-3-wrap" style="display: none;">
+            <label>Lærer 3:</label>
+            <select id="modal-teacher-3" class="input-field"></select>
+            <div class="share-input">
+              <input type="number" id="modal-hours-3" step="0.25" min="0" class="input-field tiny-input" />
+              <span>t/uge</span>
+              <label class="slot-lock-lbl" title="Lås denne lærer fast på faget"><input type="checkbox" id="modal-lock-3" /> 🔒</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="wishes-insight">
+          <h4>Hovedlærer, kompetencer & ønsker til dette fag (klik for at vælge):</h4>
+          <div id="modal-candidates-list" class="candidates-chips"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modal-clear" class="btn btn-ghost">Fjern alle lærere</button>
+        <button id="modal-save" class="btn btn-primary">Gem fordeling</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
