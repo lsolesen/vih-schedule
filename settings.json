@@ -1,4 +1,8 @@
 {
+  "wishesUrls": {
+    "E2026": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQn-Rinmfe6IBAncyHOLTbD1PDpewCJHeFKR0htPPYQaBFIqzu_1mOJHHesyPa8c-o3iTtFDXIgZ3Jh/pub?gid=186125324&single=true&output=csv",
+    "F2026": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQn-Rinmfe6IBAncyHOLTbD1PDpewCJHeFKR0htPPYQaBFIqzu_1mOJHHesyPa8c-o3iTtFDXIgZ3Jh/pub?gid=1970426883&single=true&output=csv"
+  },
   "teachers": [
     {
       "id": "AB",
@@ -16,7 +20,7 @@
       "id": "ID",
       "pct": 80,
       "annualUv": 616,
-      "targetWeekly": 8.3,
+      "targetWeekly": 8,
       "leavePhases": {
         "E2026": [],
         "F2026": []
@@ -173,7 +177,11 @@
       "targetWeekly": 8.85,
       "leavePhases": {
         "E2026": [],
-        "F2026": []
+        "F2026": [
+          "F2a",
+          "F2b",
+          "F3"
+        ]
       },
       "note": "",
       "wishNotes": ""
@@ -204,9 +212,9 @@
     },
     {
       "id": "MV",
-      "pct": 50,
+      "pct": 80,
       "annualUv": 385,
-      "targetWeekly": 5,
+      "targetWeekly": 8,
       "leavePhases": {
         "E2026": [],
         "F2026": []
@@ -487,16 +495,16 @@
       ]
     },
     "Fitness 360° 😅": {
-      "leads": [
-        "AB"
-      ],
+      "leads": [],
       "primary": [
-        "MB"
+        "MB",
+        "AB"
       ],
       "canTeach": [
         "NM",
         "ML",
-        "JH"
+        "JH",
+        "SB"
       ]
     },
     "COPS - Polititræning 👮": {
@@ -526,7 +534,7 @@
         "TG"
       ],
       "primary": [
-        "TH"
+        "JK"
       ],
       "canTeach": [
         "ML",
@@ -562,9 +570,7 @@
       "canTeach": []
     },
     "Ketsjer 360": {
-      "leads": [
-        "JD"
-      ],
+      "leads": [],
       "primary": [
         "MO"
       ],
@@ -586,20 +592,20 @@
         "TH"
       ],
       "primary": [
-        "DJ"
+        "DJ",
+        "JK"
       ],
       "canTeach": [
-        "JH",
         "TG",
         "MV"
       ]
     },
     "Volleyball & Beachvolley 🏐": {
       "leads": [
-        "TG"
+        "MH"
       ],
       "primary": [
-        "MH"
+        "TG"
       ],
       "canTeach": [
         "MO"
@@ -629,7 +635,8 @@
       "canTeach": [
         "AB",
         "JK",
-        "TG"
+        "TG",
+        "ID"
       ]
     },
     "International Class 🏳️‍🌈": {
@@ -653,10 +660,11 @@
         "JN"
       ],
       "primary": [
-        "MO"
+        "MO",
+        "SB"
       ],
       "canTeach": [
-        "MB"
+        "NM"
       ]
     },
     "Ernæring & Forbrænding 🥕": {
@@ -700,42 +708,38 @@
       ]
     },
     "FysioFit & Test 🧑‍🔬": {
-      "leads": [
-        "MH"
-      ],
-      "primary": [],
-      "canTeach": [
+      "leads": [],
+      "primary": [
+        "MH",
         "MM"
-      ]
+      ],
+      "canTeach": []
     },
     "Musik 🎶": {
-      "leads": [
+      "leads": [],
+      "primary": [
+        "MV",
+        "JN",
         "DJ"
       ],
-      "primary": [
-        "MV"
-      ],
-      "canTeach": [
-        "JN"
-      ]
+      "canTeach": []
     },
     "Test & træning 🧑‍🔬": {
       "leads": [
         "MM"
       ],
-      "primary": [
-        "MH"
-      ],
+      "primary": [],
       "canTeach": [
-        "JH"
+        "MH"
       ]
     },
     "Psykologi 🧠": {
       "leads": [
-        "TH"
+        "SB",
+        "ID"
       ],
       "primary": [
-        "MV"
+        "TH"
       ],
       "canTeach": []
     },
@@ -745,8 +749,10 @@
       ],
       "primary": [],
       "canTeach": [
-        "TH",
-        "DJ"
+        "DJ",
+        "NM",
+        "MV",
+        "JK"
       ]
     },
     "Badminton & Racket Sports 🏸": {
@@ -760,7 +766,9 @@
       "leads": [],
       "primary": [
         "KL",
-        "AB"
+        "AB",
+        "SB",
+        "NM"
       ],
       "canTeach": []
     },
@@ -772,10 +780,10 @@
       "canTeach": []
     },
     "Bootcamp 🥵": {
-      "leads": [],
-      "primary": [
+      "leads": [
         "MB"
       ],
+      "primary": [],
       "canTeach": []
     },
     "Cardio Attack ❤️": {
@@ -795,7 +803,9 @@
       "primary": [
         "ML"
       ],
-      "canTeach": []
+      "canTeach": [
+        "JK"
+      ]
     },
     "Fighter 🥷🏻": {
       "leads": [
@@ -858,7 +868,10 @@
       "primary": [
         "MH"
       ],
-      "canTeach": []
+      "canTeach": [
+        "TG",
+        "SB"
+      ]
     },
     "Balanced Body & Movement": {
       "leads": [],
@@ -869,20 +882,23 @@
       "canTeach": []
     },
     "Fodbold & Playertek ⚽": {
-      "leads": [
+      "leads": [],
+      "primary": [
+        "KL",
         "JD"
       ],
-      "primary": [],
       "canTeach": []
     },
     "Game changer 🎲": {
-      "leads": [],
-      "primary": [
-        "TG",
-        "JK",
-        "MB"
+      "leads": [
+        "TG"
       ],
-      "canTeach": []
+      "primary": [
+        "JK"
+      ],
+      "canTeach": [
+        "MB"
+      ]
     },
     "Indoor Bike Xperience": {
       "leads": [],
@@ -893,12 +909,16 @@
       ]
     },
     "Løb & Løbetræning 👟": {
-      "leads": [],
+      "leads": [
+        "TH"
+      ],
       "primary": [
-        "TG",
         "MO"
       ],
-      "canTeach": []
+      "canTeach": [
+        "NM",
+        "SB"
+      ]
     },
     "Mountainbike & Trail Surfing 🚵": {
       "leads": [],
@@ -939,7 +959,8 @@
       "primary": [
         "JN",
         "MH",
-        "KL"
+        "KL",
+        "LO"
       ],
       "canTeach": []
     },
@@ -1033,7 +1054,8 @@
       "primary": [],
       "canTeach": [
         "ML",
-        "TG"
+        "TG",
+        "JK"
       ]
     },
     "Fitnessinstruktør 🏋️": {
@@ -1075,6 +1097,20 @@
         "TH"
       ],
       "primary": [],
+      "canTeach": []
+    },
+    "Sportsjournalistik 🗒️": {
+      "leads": [
+        "CE"
+      ],
+      "primary": [],
+      "canTeach": []
+    },
+    "Power Endurance Sport": {
+      "leads": [],
+      "primary": [
+        "SB"
+      ],
       "canTeach": []
     }
   }

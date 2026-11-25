@@ -59,6 +59,12 @@ export function getSlotDefaultHours(baseHours, teacherCount, splitType, slotInde
   if (splitType === "partial") {
     return slotIndex === 0 ? h : Math.round((h / 2) * 100) / 100;
   }
+
+  // "split": ved 4,5t delt på 2 lærere -> 3t og 1,5t
+  if (teacherCount === 2 && Math.abs(h - 4.5) < 0.001) {
+    return slotIndex === 0 ? 3 : 1.5;
+  }
+
   return Math.round((h / teacherCount) * 100) / 100;
 }
 
@@ -403,17 +409,17 @@ export function runAutoAssign(state, semKey) {
   deferredForSplit.forEach(({ block, course }) => {
     if (course.assignments.length > 0) return;
     const metrics = computeTeacherMetrics(state, semKey);
-    const halfHours = Math.round((course.hours / 2) * 100) / 100;
     const picked = [];
 
     for (let i = 0; i < 2; i++) {
+      const slotHours = getSlotDefaultHours(course.hours, 2, "split", i);
       let bestId = null, bestScore = -999;
       state.teachers.forEach(t => {
         if (picked.includes(t.id)) return;
-        const sc = scoreCandidateForHours(t, block, course, halfHours, metrics);
+        const sc = scoreCandidateForHours(t, block, course, slotHours, metrics);
         if (sc > bestScore) { bestScore = sc; bestId = t.id; }
       });
-      if (bestId) picked.push(bestId);
+      if (bestId) picked.push({ id: bestId, hours: slotHours });
     }
 
     if (picked.length > 0) {
@@ -421,8 +427,8 @@ export function runAutoAssign(state, semKey) {
       course.splitType = "split";
       course.mode = "split";
       course.autoSplit = true;
-      course.assignments = picked.map(tid => ({ teacher: tid, hours: halfHours, locked: false }));
-      picked.forEach(tid => busyByBlock[block.id].add(tid));
+      course.assignments = picked.map(p => ({ teacher: p.id, hours: p.hours, locked: false }));
+      picked.forEach(p => busyByBlock[block.id].add(p.id));
     }
   });
 }

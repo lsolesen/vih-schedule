@@ -20,6 +20,7 @@ let highlightUnassigned = false;
 let diagnosticsCollapsed = true;
 let modalTeacherCount = 1;
 let modalSplitType = "split";
+let lastCsvWishCounts = {};
 
 function normalizeAllCompetencies(compObj) {
   const out = {};
@@ -47,12 +48,12 @@ function setDataSourceStatus(mode) {
   badge.classList.remove("is-repo", "is-local", "is-default", "is-plan");
   if (mode === "plan") {
     badge.classList.add("is-repo");
-    badge.innerHTML = `<span class="source-dot"></span><span>plan.json</span>`;
-    badge.title = "Indlæst arbejdsplan direkte fra plan.json i din mappe";
+    badge.innerHTML = `<span class="source-dot"></span><span>plan.json + settings.json</span>`;
+    badge.title = "Arbejdsplan indlæst fra plan.json og stamdata fra settings.json";
   } else if (mode === "settings") {
     badge.classList.add("is-repo");
     badge.innerHTML = `<span class="source-dot"></span><span>settings.json</span>`;
-    badge.title = "Startet med stamdata fra settings.json";
+    badge.title = "Indlæst stamdata fra settings.json";
   } else if (mode === "local") {
     badge.classList.add("is-local");
     badge.innerHTML = `<span class="source-dot"></span><span>Lokal kladde</span>`;
@@ -71,21 +72,7 @@ function saveState() {
 
 async function fetchFiles() {
   const base = buildDefaultState();
-  let loadMode = "default";
-
-  try {
-    const planRes = await fetch("./plan.json?t=" + Date.now(), { cache: "no-store" });
-    if (planRes.ok) {
-      const planJson = await planRes.json();
-      if (planJson.semesters && planJson.teachers) {
-        planJson.competencies = normalizeAllCompetencies(planJson.competencies);
-        setDataSourceStatus("plan");
-        return planJson;
-      }
-    }
-  } catch {
-    // Ingen plan.json fundet — fortsætter til settings.json
-  }
+  let foundAny = false;
 
   try {
     const setRes = await fetch("./settings.json?t=" + Date.now(), { cache: "no-store" });
@@ -94,15 +81,35 @@ async function fetchFiles() {
       if (setJson.teachers) base.teachers = setJson.teachers;
       if (setJson.specialTasks) base.specialTasks = setJson.specialTasks;
       if (setJson.competencies) base.competencies = normalizeAllCompetencies(setJson.competencies);
-      if (setJson.semesters) base.semesters = setJson.semesters;
       if (setJson.wishesUrls) base.wishesUrls = { ...base.wishesUrls, ...setJson.wishesUrls };
-      loadMode = "settings";
+      foundAny = true;
     }
   } catch {
-    // Ingen settings.json fundet — bruger tomt grundskelet
+    // Ingen settings.json fundet
   }
 
-  setDataSourceStatus(loadMode);
+  try {
+    const planRes = await fetch("./plan.json?t=" + Date.now(), { cache: "no-store" });
+    if (planRes.ok) {
+      const planJson = await planRes.json();
+      if (planJson.semesters) {
+        base.semesters = planJson.semesters;
+        foundAny = true;
+      }
+      if (typeof planJson.diagnosticsCollapsed === "boolean") {
+        base.diagnosticsCollapsed = planJson.diagnosticsCollapsed;
+      }
+      if (!base.teachers.length && planJson.teachers) base.teachers = planJson.teachers;
+      if (!base.specialTasks.length && planJson.specialTasks) base.specialTasks = planJson.specialTasks;
+      if (!Object.keys(base.competencies).length && planJson.competencies) {
+        base.competencies = normalizeAllCompetencies(planJson.competencies);
+      }
+    }
+  } catch {
+    // Ingen plan.json fundet
+  }
+
+  setDataSourceStatus(foundAny ? "plan" : "default");
   return base;
 }
 
@@ -142,17 +149,22 @@ function renderBoard() {
   document.getElementById("current-sem-label").textContent = sem.label;
   const metrics = computeTeacherMetrics(state, currentSem);
 
-  // Live timebarometer pr. lærer
   const baroEl = document.getElementById("teacher-barometer");
   baroEl.innerHTML = "";
 
   state.teachers.forEach(t => {
     const m = metrics[t.id];
-    const isLeaveAll = (t.leavePhases?.[currentSem] || []).length >= sem.phases.length;
+    const leaveList = t.leavePhases?.[currentSem] || [];
+    const isLeaveAll = leaveList.length >= sem.phases.length && sem.phases.length > 0;
+    const hasPartialLeave = leaveList.length > 0 && !isLeaveAll;
+
+    const leaveBadge = leaveList.length
+      ? `<span class="pill pill-locked" style="font-size:10px;padding:1px 5px;white-space:nowrap;" title="Orlov i faser: ${leaveList.join(", ")}">🏖️${hasPartialLeave ? ` ${leaveList.length}/${sem.phases.length}` : ""}</span>`
+      : "";
 
     let textColor = "var(--text-main)";
     let barColor = "#4b6584";
-    if (!isLeaveAll) {
+    if (!isLeaveAll && Number(t.targetWeekly || 0) > 0) {
       if (m.avgWeekly < m.bounds.minAcceptable - 0.05) {
         textColor = "var(--warn)";
         barColor = "var(--warn)";
@@ -162,7 +174,8 @@ function renderBoard() {
       }
     }
 
-    const fillPct = Math.min(100, Math.round((m.avgWeekly / Math.max(1, m.bounds.maxAcceptable)) * 100));
+    const maxRef = Math.max(1, m.bounds.maxAcceptable || t.targetWeekly || 10.5);
+    const fillPct = Math.min(100, Math.round((m.avgWeekly / maxRef) * 100));
     const phaseMiniHtml = sem.phases.map(ph => {
       const st = m.phaseStatus[ph.id] || "ok";
       const cls = st === "over" ? "ph-over" : st === "under" ? "ph-under" : st === "leave" ? "ph-leave" : "ph-ok";
@@ -178,9 +191,9 @@ function renderBoard() {
     ].filter(Boolean).join(" ");
 
     card.innerHTML = `
-      <div class="t-meter-top">
-        <span>${t.id} ${m.conflicts.length ? "⚠️" : m.spikes.length ? "🔥" : ""}</span>
-        <span style="color:${textColor}">${formatNum(m.avgWeekly)} / ${formatNum(t.targetWeekly)}t</span>
+      <div class="t-meter-top" style="gap:6px;">
+        <span style="display:inline-flex;align-items:center;gap:4px;min-width:0;">${t.id}${leaveBadge}${m.conflicts.length ? " ⚠️" : m.spikes.length ? " 🔥" : ""}</span>
+        <span style="color:${textColor};white-space:nowrap;flex-shrink:0;">${formatNum(m.avgWeekly)} / ${formatNum(t.targetWeekly)}t</span>
       </div>
       <div class="t-bar-bg">
         <div class="t-bar-fill" style="width:${fillPct}%; background:${barColor};"></div>
@@ -196,10 +209,8 @@ function renderBoard() {
     baroEl.appendChild(card);
   });
 
-  // Sammenklappeligt diagnostikpanel
   renderDiagnosticsPanel(sem, metrics);
 
-  // Samlet semester-tidslinje
   const periodsEl = document.getElementById("periods-container");
   periodsEl.innerHTML = "";
 
@@ -272,20 +283,185 @@ function renderDiagnosticsPanel(sem, metrics) {
   const conflicts = [];
   const spikes = [];
   const deficits = [];
-  let unassignedCount = 0;
+  let unassignedCourses = 0;
+  let missingTeacherSlots = 0;
+  const sparseCourses = [];
 
   blocks.forEach(b => {
     b.courses.forEach(c => {
-      if (!c.isCanceled && (c.assignments || []).length === 0) unassignedCount++;
+      if (c.isCanceled) return;
+      const { teacherCount } = getCourseSharing(c);
+      const assignedCount = (c.assignments || []).length;
+
+      if (assignedCount === 0) {
+        unassignedCourses++;
+        const qualifiedCount = state.teachers.filter(t => getCompetencyLevel(state.competencies, c.name, t.id) > 0).length;
+        if (qualifiedCount <= 2) {
+          sparseCourses.push({ name: c.name, blockName: b.name, qualifiedCount });
+        }
+      }
+
+      if (assignedCount < teacherCount) {
+        missingTeacherSlots += (teacherCount - assignedCount);
+      }
     });
   });
 
+  const phases = sem.phases || [];
+  const totalWeight = Math.max(1, phases.reduce((acc, p) => acc + Number(p.weight || 1), 0));
+
+  let totalCapacityWeekly = 0;
+  let totalMinWeekly = 0;
+  let totalMaxWeekly = 0;
+  let totalAssignedWeekly = 0;
+  let leaveReducedWeekly = 0;
+  const zeroNormAssigned = [];
+
   state.teachers.forEach(t => {
     const m = metrics[t.id];
+    const leaveSet = new Set(t.leavePhases?.[currentSem] || []);
+    const baseTarget = Number(t.targetWeekly || 0);
+
+    const activeWeight = phases.reduce((sum, p) => {
+      const w = Number(p.weight || 1);
+      return leaveSet.has(p.id) ? sum : sum + w;
+    }, 0);
+
+    const effectiveTarget = (baseTarget * activeWeight) / totalWeight;
+    leaveReducedWeekly += Math.max(0, baseTarget - effectiveTarget);
+
+    totalCapacityWeekly += effectiveTarget;
+    totalMinWeekly += Number(m.bounds.minAcceptable || 0);
+    totalMaxWeekly += Number(m.bounds.maxAcceptable || 0);
+    totalAssignedWeekly += Number(m.avgWeekly || 0);
+
+    if (baseTarget <= 0 && Number(m.avgWeekly || 0) > 0) {
+      zeroNormAssigned.push({ id: t.id, avg: m.avgWeekly });
+    }
+
     m.conflicts.forEach(msg => conflicts.push({ tid: t.id, label: `${t.id}: ${msg}` }));
     m.spikes.forEach(sp => spikes.push({ tid: t.id, label: `${t.id} (${sp.phase}: ${formatNum(sp.hours)}t / maks ${formatNum(sp.max)}t)` }));
     m.deficits.forEach(df => deficits.push({ tid: t.id, label: `${t.id} (${df.phase}: ${formatNum(df.hours)}t / min ${formatNum(df.min)}t)` }));
   });
+
+  let weightedMissingWeekly = 0;
+  blocks.forEach(b => {
+    b.courses.forEach(c => {
+      if (c.isCanceled) return;
+      const { teacherCount, splitType } = getCourseSharing(c);
+      const assignedCount = (c.assignments || []).length;
+      if (assignedCount < teacherCount) {
+        let missingHrsThisCourse = 0;
+        for (let idx = assignedCount; idx < teacherCount; idx++) {
+          missingHrsThisCourse += getSlotDefaultHours(c.hours, teacherCount, splitType, idx);
+        }
+        const blockPhaseWeight = (b.activePhases || []).reduce((sum, phId) => {
+          const ph = phases.find(p => p.id === phId);
+          return sum + Number(ph?.weight || 1);
+        }, 0);
+        weightedMissingWeekly += (missingHrsThisCourse * blockPhaseWeight) / totalWeight;
+      }
+    });
+  });
+
+  const plannedTotalWeekly = totalAssignedWeekly + weightedMissingWeekly;
+  const balanceWeekly = totalCapacityWeekly - plannedTotalWeekly;
+  const currentSurplusWeekly = totalCapacityWeekly - totalAssignedWeekly;
+  const zeroNormTotalWeekly = zeroNormAssigned.reduce((sum, x) => sum + x.avg, 0);
+
+  const suggestions = [];
+  const dgl = sem.dglConfig || {};
+  const dglTeachers = (dgl.teachers || []).filter(Boolean);
+  const openDglSlots = Math.max(0, Number(dgl.teamCount || 0) - dglTeachers.length);
+  const dglHours = Number(dgl.hoursPerTeam ?? 3);
+
+  const sang = sem.sangConfig || {};
+  const sangTeachers = (sang.teachers || []).filter(Boolean);
+  const openSangSlots = Math.max(0, Number(sang.teacherCount || 0) - sangTeachers.length);
+  const sangHoursEach = sang.splitHours
+    ? Number(sang.weeklyHours ?? 1.5) / Math.max(1, Number(sang.teacherCount || 1))
+    : Number(sang.weeklyHours ?? 1.5);
+
+  const deficitTeachers = state.teachers
+    .map(t => {
+      const m = metrics[t.id];
+      const gap = m.bounds.minAcceptable - m.avgWeekly;
+      return { id: t.id, avg: m.avgWeekly, min: m.bounds.minAcceptable, gap };
+    })
+    .filter(x => x.gap > 0.05 && x.min > 0)
+    .sort((a, b) => b.gap - a.gap);
+
+  if (zeroNormAssigned.length > 0) {
+    const zList = zeroNormAssigned.map(x => `${x.id} (${formatNum(x.avg)} t/uge)`).join(", ");
+    suggestions.push({
+      tid: zeroNormAssigned[0].id,
+      action: "teachers",
+      text: `<strong>Timer på 0t-lærere (${formatNum(zeroNormTotalWeekly)} t/uge):</strong> ${zList} har tildelte timer uden en norm i <code>targetWeekly</code>. Tjek om timerne skal dækkes af lærere med norm eller om normen skal opdateres.`
+    });
+  }
+
+  if (balanceWeekly < -0.5) {
+    suggestions.push({
+      tid: deficitTeachers[0]?.id || "",
+      text: `<strong>Samlet timepres (${formatNum(Math.abs(balanceWeekly))} t/uge over norm):</strong> Planlagte fag + manglende pladser overstiger den aktive lærernorm (efter orlov). Overvej at aflyse enkelte fag, nedjustere fagtimetal eller dublere/dele færre hold.`
+    });
+  } else if (balanceWeekly > 1.5) {
+    suggestions.push({
+      tid: deficitTeachers[0]?.id || "",
+      text: `<strong>Ledig kapacitet (${formatNum(balanceWeekly)} t/uge i overskud):</strong> Lærerstaben har samlet set ekstra timer til rådighed ud over de planlagte hold og åbne pladser.`
+    });
+  }
+
+  if (openDglSlots > 0 && deficitTeachers.length > 0) {
+    const dglCompIds = deficitTeachers
+      .filter(x => getCompetencyLevel(state.competencies, "DGL", x.id) > 0)
+      .slice(0, Math.min(4, openDglSlots))
+      .map(x => x.id);
+    const hintIds = dglCompIds.length ? dglCompIds.join(", ") : deficitTeachers.slice(0, 3).map(x => x.id).join(", ");
+    suggestions.push({
+      tid: dglCompIds[0] || deficitTeachers[0].id,
+      text: `<strong>DGL (${formatNum(dglHours)} t/uge hele semesteret):</strong> Der er ${openDglSlots} ledig(e) holdplads(er). Sættes f.eks. ${hintIds} på, løfter det hele ugenormen markant.`
+    });
+  }
+
+  if (openSangSlots > 0 && deficitTeachers.length > 0) {
+    const sangCompIds = deficitTeachers
+      .filter(x => getCompetencyLevel(state.competencies, "Fællessang", x.id) > 0)
+      .slice(0, Math.min(3, openSangSlots))
+      .map(x => x.id);
+    if (sangCompIds.length) {
+      suggestions.push({
+        tid: sangCompIds[0],
+        text: `<strong>Fællessang (${formatNum(sangHoursEach)} t/uge):</strong> ${openSangSlots} ledig(e) plads(er) — relevant for ${sangCompIds.join(", ")}.`
+      });
+    }
+  }
+
+  if (spikes.length > 0 && deficitTeachers.length > 0) {
+    const spikeTid = spikes[0].tid;
+    const defTid = deficitTeachers[0].id;
+    suggestions.push({
+      tid: spikeTid,
+      text: `<strong>Udlign spidsbelastning:</strong> Overvej at dele et fag for <strong>${spikeTid}</strong> med f.eks. <strong>${defTid}</strong> eller flytte et fag til en roligere periode.`
+    });
+  }
+
+  if (sparseCourses.length > 0) {
+    const sample = sparseCourses.slice(0, 3).map(sc => `${sc.name} (${sc.qualifiedCount} lærer${sc.qualifiedCount === 1 ? "" : "e"})`).join(", ");
+    suggestions.push({
+      tid: deficitTeachers[0]?.id || "",
+      action: "matrix",
+      text: `<strong>Få kompetencer på ubesatte fag:</strong> Bl.a. ${sample}. Tilføj ✓/★ i Kompetencematrixen eller tildel manuelt.`
+    });
+  }
+
+  if (!suggestions.length && deficitTeachers.length > 0) {
+    const topDef = deficitTeachers.slice(0, 3).map(x => `${x.id} (${formatNum(x.avg)}/${formatNum(x.min)}t)`).join(", ");
+    suggestions.push({
+      tid: deficitTeachers[0].id,
+      text: `<strong>Lærere under min.-spænd:</strong> Klik på en lærer for at se ledige blokke og fylde op med passende kompetencer (${topDef}).`
+    });
+  }
 
   panel.innerHTML = `
     <div class="diag-header" id="diag-toggle-header">
@@ -297,11 +473,45 @@ function renderDiagnosticsPanel(sem, metrics) {
         ${conflicts.length ? `<span class="pill pill-high">⚠️ ${conflicts.length} konflikter</span>` : ""}
         ${spikes.length ? `<span class="pill pill-high">🔥 ${spikes.length} over spænd</span>` : ""}
         ${deficits.length ? `<span class="pill pill-low">📉 ${deficits.length} under spænd</span>` : ""}
-        <span class="pill pill-locked">📌 ${unassignedCount} ubesatte fag</span>
+        ${zeroNormAssigned.length ? `<span class="pill pill-low">0️⃣ ${zeroNormAssigned.length} på 0t-norm</span>` : ""}
+        ${missingTeacherSlots ? `
+          <button type="button" id="btn-toggle-unassigned" class="pill pill-locked" style="cursor:pointer;font-family:inherit;">
+            📌 ${missingTeacherSlots} manglende pladser (${unassignedCourses} helt ubesatte) ${highlightUnassigned ? "(markeret)" : "(markér)"}
+          </button>
+        ` : `<span class="pill pill-locked">✓ Alle pladser besat</span>`}
       </div>
     </div>
     <div class="diag-body ${diagnosticsCollapsed ? "collapsed" : ""}">
-      <div class="diag-grid">
+      <div class="diag-stats-bar" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px;">
+        <div class="phase-box" style="text-align:left;padding:8px 10px;">
+          <span class="hint">Tilgængelig lærernorm</span>
+          <strong style="font-size:14px;">${formatNum(totalCapacityWeekly)} t/uge</strong>
+          <span class="hint" style="font-size:11px;">
+            ${leaveReducedWeekly > 0.01 ? `-${formatNum(leaveReducedWeekly)}t pga. orlov • ` : ""}Spænd: ${formatNum(totalMinWeekly)}–${formatNum(totalMaxWeekly)}t
+          </span>
+        </div>
+        <div class="phase-box" style="text-align:left;padding:8px 10px;">
+          <span class="hint">Tildelt nu i skemaet</span>
+          <strong style="font-size:14px;">${formatNum(totalAssignedWeekly)} t/uge</strong>
+          <span class="hint" style="font-size:11px;">
+            Ledig norm nu: ${formatNum(currentSurplusWeekly)}t${zeroNormAssigned.length ? ` • 0t-lærere: ${formatNum(zeroNormTotalWeekly)}t` : ""}
+          </span>
+        </div>
+        <div class="phase-box" style="text-align:left;padding:8px 10px;">
+          <span class="hint">Åbne pladser (inkl. delte/dubl.)</span>
+          <strong style="font-size:14px;">${missingTeacherSlots} pladser</strong>
+          <span class="hint" style="font-size:11px;">~${formatNum(weightedMissingWeekly)} t/uge vægtet</span>
+        </div>
+        <div class="phase-box" style="text-align:left;padding:8px 10px;">
+          <span class="hint">Balance efter åbne pladser</span>
+          <strong style="font-size:14px;color:${balanceWeekly < -0.5 ? "#ff7675" : balanceWeekly > 0 ? "#6ee7b7" : "var(--text-main)"}">
+            ${balanceWeekly >= 0 ? "+" : ""}${formatNum(balanceWeekly)} t/uge
+          </strong>
+          <span class="hint" style="font-size:11px;">${balanceWeekly >= 0 ? "Overskud i stabens norm" : "Underskud i stabens norm"}</span>
+        </div>
+      </div>
+
+      <div class="diag-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
         <div class="diag-box ${conflicts.length ? "diag-danger" : "diag-ok"}">
           <div class="diag-title"><span>⚠️ Blok- & Orlovskonflikter</span><span>${conflicts.length}</span></div>
           <div class="diag-chips">
@@ -328,16 +538,25 @@ function renderDiagnosticsPanel(sem, metrics) {
               : `<span class="hint">Alle aktive lærere er inden for spændet</span>`}
           </div>
         </div>
-
-        <div class="diag-box ${unassignedCount ? "diag-info" : "diag-ok"}">
-          <div class="diag-title"><span>📌 Ubesatte fag i skemaet</span><span>${unassignedCount} fag</span></div>
-          <div class="diag-chips">
-            ${unassignedCount
-              ? `<button type="button" id="btn-toggle-unassigned" class="diag-chip">${highlightUnassigned ? "Skjul markering af ubesatte" : "Fremhæv ubesatte fag i skemaet"}</button>`
-              : `<span class="hint">Alle fag i semestret er besat</span>`}
-          </div>
-        </div>
       </div>
+
+      ${suggestions.length ? `
+        <div class="diag-suggestions" style="margin-top:10px;padding:9px 11px;border-radius:8px;background:rgba(15,23,42,0.55);border:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#93c5fd;">💡 Forslag til at løse udfordringerne</div>
+          ${suggestions.map(sg => `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-main);">
+              <span>${sg.text}</span>
+              ${sg.action === "matrix"
+                ? `<button type="button" class="diag-chip diag-sug-action" data-action="matrix" style="flex-shrink:0;cursor:pointer;">Åbn matrix ↗</button>`
+                : sg.action === "teachers"
+                  ? `<button type="button" class="diag-chip diag-sug-action" data-action="teachers" style="flex-shrink:0;cursor:pointer;">Se normer ↗</button>`
+                  : sg.tid
+                    ? `<button type="button" class="diag-chip diag-sug-action" data-tid="${sg.tid}" style="flex-shrink:0;cursor:pointer;">Se ${sg.tid} ↗</button>`
+                    : ""}
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
     </div>
   `;
 
@@ -349,6 +568,15 @@ function renderDiagnosticsPanel(sem, metrics) {
     panel.querySelector(".diag-header-left span").textContent = diagnosticsCollapsed ? "▶" : "▼";
   };
 
+  const toggleBtn = panel.querySelector("#btn-toggle-unassigned");
+  if (toggleBtn) {
+    toggleBtn.onclick = (e) => {
+      e.stopPropagation();
+      highlightUnassigned = !highlightUnassigned;
+      renderBoard();
+    };
+  }
+
   panel.querySelectorAll(".diag-chip[data-tid]").forEach(chip => {
     chip.onclick = (e) => {
       e.stopPropagation();
@@ -358,18 +586,25 @@ function renderDiagnosticsPanel(sem, metrics) {
     };
   });
 
-  const toggleBtn = panel.querySelector("#btn-toggle-unassigned");
-  if (toggleBtn) {
-    toggleBtn.onclick = (e) => {
+  panel.querySelectorAll(".diag-sug-action").forEach(btn => {
+    btn.onclick = (e) => {
       e.stopPropagation();
-      highlightUnassigned = !highlightUnassigned;
-      renderBoard();
+      if (btn.dataset.action === "matrix") {
+        switchTab("competencies");
+        renderCompetencyMatrix();
+      } else if (btn.dataset.action === "teachers") {
+        switchTab("teachers");
+        renderTeachersTab();
+      } else if (btn.dataset.tid) {
+        selectedProfileTeacher = btn.dataset.tid;
+        switchTab("profile");
+        renderTeacherProfile();
+      }
     };
-  }
+  });
 }
 
 function renderContinuousBandsInto(container, sem) {
-  // LINJE 1: DGL
   const dgl = sem.dglConfig;
   dgl.lockedSlots = dgl.lockedSlots || [];
   const dglLine = document.createElement("div");
@@ -428,7 +663,6 @@ function renderContinuousBandsInto(container, sem) {
     renderAll();
   };
 
-  // LINJE 2: FÆLLESSANG
   const sang = sem.sangConfig;
   sang.lockedSlots = sang.lockedSlots || [];
   const hoursEach = sang.splitHours ? sang.weeklyHours / Math.max(1, sang.teacherCount) : sang.weeklyHours;
@@ -557,23 +791,23 @@ function createCompactBlock(block, metrics) {
 
   block.courses.forEach(course => {
     const item = document.createElement("div");
+    const { teacherCount, splitType } = getCourseSharing(course);
     const isCourseInConflict = !course.isCanceled && course.assignments.some(a => conflictTeachers.has(a.teacher));
     const hasLeaveConflict = !course.isCanceled && course.assignments.some(a => {
       const m = metrics[a.teacher];
       return m && m.conflicts.some(msg => msg.includes("orlov"));
     });
     const hasLockedTeacher = !course.isCanceled && course.assignments.some(a => !!a.locked);
-    const isUnassigned = !course.isCanceled && course.assignments.length === 0;
+    const isMissingSlots = !course.isCanceled && course.assignments.length < teacherCount;
 
     item.className = [
       "course-item",
       course.isCanceled ? "is-canceled" : "",
       (isCourseInConflict || hasLeaveConflict) ? "has-conflict" : "",
       hasLockedTeacher ? "has-locked-teacher" : "",
-      highlightUnassigned && isUnassigned ? "highlight-unassigned" : ""
+      highlightUnassigned && isMissingSlots ? "highlight-unassigned" : ""
     ].filter(Boolean).join(" ");
 
-    const { teacherCount, splitType } = getCourseSharing(course);
     let modeText = "";
     if (!course.isCanceled && teacherCount > 1) {
       if (splitType === "double") modeText = `${teacherCount} HOLD`;
@@ -582,9 +816,13 @@ function createCompactBlock(block, metrics) {
     }
     const modeBadge = modeText ? `<span class="c-mode">${modeText}</span>` : "";
 
+    const noteHtml = course.note
+      ? `<span class="hint" style="margin-left:6px;font-style:italic;opacity:0.88;">— ${course.note}</span>`
+      : "";
+
     item.innerHTML = `
       <div class="c-left">
-        <span class="c-name" title="${course.name}">${course.name}</span>
+        <span class="c-name" title="${course.name}${course.note ? " — " + course.note : ""}">${course.name}${noteHtml}</span>
       </div>
       <div class="c-teachers">
         ${modeBadge}
@@ -595,11 +833,6 @@ function createCompactBlock(block, metrics) {
 
     if (course.isCanceled) {
       teachersWrap.innerHTML = `<span class="c-canceled-badge">🚫 Aflyst</span>`;
-    } else if (course.assignments.length === 0) {
-      const emptySpan = document.createElement("span");
-      emptySpan.className = "c-empty";
-      emptySpan.textContent = "+ Tildel";
-      teachersWrap.appendChild(emptySpan);
     } else {
       course.assignments.forEach((a, aIdx) => {
         const lvl = getCompetencyLevel(state.competencies, course.name, a.teacher);
@@ -636,6 +869,15 @@ function createCompactBlock(block, metrics) {
         badge.appendChild(lockBtn);
         teachersWrap.appendChild(badge);
       });
+
+      const missingSlots = Math.max(0, teacherCount - course.assignments.length);
+      for (let s = 0; s < missingSlots; s++) {
+        const slotNumber = course.assignments.length + s + 1;
+        const emptySpan = document.createElement("span");
+        emptySpan.className = "c-empty";
+        emptySpan.textContent = teacherCount > 1 ? `+ Lærer ${slotNumber}` : "+ Tildel";
+        teachersWrap.appendChild(emptySpan);
+      }
     }
 
     item.onclick = () => openCourseModal(course, block.name, block);
@@ -684,22 +926,14 @@ function renderTeacherProfile() {
     else if (info.canTeach.includes(tid)) canCourses.push(cName);
   });
 
-  // Saml ønsker grupperet efter periode
   const blocks = getAllSemesterBlocks(sem);
-  const shortBlockLabel = (bName) => {
-    const low = (bName || "").toLowerCase();
-    if (low.includes("idræt 1")) return "Idræt 1";
-    if (low.includes("idræt 2")) return "Idræt 2";
-    if (low.includes("kompetence")) return "Kompetence";
-    if (low.includes("inspiration")) return "Inspiration";
-    return bName;
-  };
 
-  const getWishesForBlocks = (blockIds) => {
-    const items = [];
+  const getWishesGroupedByBlock = (blockIds) => {
+    const groups = [];
     blocks
       .filter(b => blockIds.includes(b.id))
       .forEach(b => {
+        const items = [];
         b.courses.forEach((c, cIdx) => {
           const isP1 = (c.wishes1 || []).includes(tid);
           const isP2 = (c.wishes2 || []).includes(tid);
@@ -707,16 +941,21 @@ function renderTeacherProfile() {
           const isAssigned = (c.assignments || []).some(a => a.teacher === tid);
           items.push({
             name: c.name,
-            eyebrow: shortBlockLabel(b.name),
+            note: c.note || "",
             prio: isP1 ? 1 : 2,
             isAssigned,
             blockId: b.id,
             courseIdx: cIdx
           });
         });
+        items.sort((a, b) => a.prio - b.prio);
+        groups.push({
+          blockId: b.id,
+          blockTitle: b.name.split("•")[0].trim(),
+          items
+        });
       });
-    // Sortér 1. prioritet før 2. prioritet
-    return items.sort((a, b) => a.prio - b.prio);
+    return groups;
   };
 
   const contWishes = [];
@@ -729,42 +968,48 @@ function renderTeacherProfile() {
     contWishes.push({ name: "Fællessang", eyebrow: "Hele semesteret", prio: 1, isAssigned, blockId: "CONT_SANG", courseIdx: -1 });
   }
 
-  const renderWishColumn = (title, items) => `
-    <div class="wish-period-col">
-      <div class="wish-period-title">${title}</div>
-      ${items.length
-        ? items.map(w => `
-            <button type="button"
-              class="wish-period-item profile-course-trigger ${w.prio === 2 ? "is-prio-2" : "is-prio-1"} ${w.isAssigned ? "is-assigned" : ""}"
-              data-block-id="${w.blockId}" data-course-idx="${w.courseIdx}"
-              title="Klik for at åbne ${w.name} (${w.prio}. prioritet)${w.isAssigned ? " • Allerede tildelt" : ""}">
-              <div class="wish-item-left">
-                <span class="wish-item-eyebrow">${w.eyebrow}</span>
-                <span class="wish-item-name">${w.isAssigned ? "✓ " : ""}${w.name}</span>
+  const renderWishRow = (w, eyebrowOverride = "") => {
+    const wNote = w.note ? `<span class="hint" style="margin-left:5px;font-style:italic;opacity:0.88;">— ${w.note}</span>` : "";
+    return `
+      <button type="button"
+        class="wish-period-item profile-course-trigger ${w.prio === 2 ? "is-prio-2" : "is-prio-1"} ${w.isAssigned ? "is-assigned" : ""}"
+        data-block-id="${w.blockId}" data-course-idx="${w.courseIdx}"
+        title="Klik for at åbne ${w.name}${w.note ? " — " + w.note : ""} (${w.prio}. prioritet)${w.isAssigned ? " • Allerede tildelt" : ""}">
+        <div class="wish-item-left">
+          ${eyebrowOverride ? `<span class="wish-item-eyebrow">${eyebrowOverride}</span>` : ""}
+          <span class="wish-item-name">${w.isAssigned ? "✓ " : ""}${w.name}${wNote}</span>
+        </div>
+        <span class="prio-pill ${w.prio === 1 ? "prio-1" : "prio-2"}">${w.prio}. prio</span>
+      </button>
+    `;
+  };
+
+  const renderWishColumn = (title, blockIds) => {
+    const groups = getWishesGroupedByBlock(blockIds);
+    const hasAny = groups.some(g => g.items.length > 0);
+
+    return `
+      <div class="wish-period-col">
+        <div class="wish-period-title">${title}</div>
+        ${hasAny
+          ? groups.map(g => `
+              <div class="wish-subblock" style="margin-top:4px;">
+                <div class="wish-item-eyebrow" style="padding:2px 2px 3px;">${g.blockTitle}</div>
+                ${g.items.length
+                  ? g.items.map(w => renderWishRow(w)).join("")
+                  : `<div class="c-empty" style="font-size:11px;padding:2px 4px;">Ingen ønsker</div>`}
               </div>
-              <span class="prio-pill ${w.prio === 1 ? "prio-1" : "prio-2"}">${w.prio}. prio</span>
-            </button>
-          `).join("")
-        : `<div class="c-empty" style="font-size:11.5px;padding:4px 2px;">Ingen ønsker</div>`}
-    </div>
-  `;
+            `).join("")
+          : `<div class="c-empty" style="font-size:11.5px;padding:4px 2px;">Ingen ønsker</div>`}
+      </div>
+    `;
+  };
 
   let wishesPeriodHtml = "";
   if (contWishes.length) {
     wishesPeriodHtml += `
       <div class="wish-cont-row">
-        ${contWishes.map(w => `
-          <button type="button"
-            class="wish-period-item profile-course-trigger is-prio-1 ${w.isAssigned ? "is-assigned" : ""}"
-            data-block-id="${w.blockId}" data-course-idx="-1"
-            title="Klik for at gå til ${w.name}">
-            <div class="wish-item-left">
-              <span class="wish-item-eyebrow">HELE SEMESTERET</span>
-              <span class="wish-item-name">${w.isAssigned ? "✓ " : ""}${w.name}</span>
-            </div>
-            <span class="prio-pill prio-1">Ønsket</span>
-          </button>
-        `).join("")}
+        ${contWishes.map(w => renderWishRow(w, "HELE SEMESTERET")).join("")}
       </div>
     `;
   }
@@ -772,20 +1017,20 @@ function renderTeacherProfile() {
   if (currentSem === "F2026") {
     wishesPeriodHtml += `
       <div class="wish-period-grid cols-3">
-        ${renderWishColumn("Forår 1 (Jan–Feb)", getWishesForBlocks(["F1_I1", "F1_I2"]))}
-        ${renderWishColumn("Forår 2 (Mar–Apr)", getWishesForBlocks(["F2_I1", "F2_I2"]))}
-        ${renderWishColumn("Forår 3 (Maj–Jun)", getWishesForBlocks(["F3_I1", "F3_I2"]))}
+        ${renderWishColumn("Forår 1 (Jan–Feb)", ["F1_I1", "F1_I2"])}
+        ${renderWishColumn("Forår 2 (Mar–Apr)", ["F2_I1", "F2_I2"])}
+        ${renderWishColumn("Forår 3 (Maj–Jun)", ["F3_I1", "F3_I2"])}
       </div>
       <div class="wish-period-grid cols-2" style="margin-top:8px;">
-        ${renderWishColumn("Komp. & Insp. • Del 1", getWishesForBlocks(["F1_K", "F1_IN"]))}
-        ${renderWishColumn("Komp. & Insp. • Del 2", getWishesForBlocks(["F2_K", "F2_IN"]))}
+        ${renderWishColumn("Kompetence & Inspiration • Del 1", ["F1_K", "F1_IN"])}
+        ${renderWishColumn("Kompetence & Inspiration • Del 2", ["F2_K", "F2_IN"])}
       </div>
     `;
   } else {
     wishesPeriodHtml += `
       <div class="wish-period-grid cols-2">
-        ${renderWishColumn("1. Periode (Aug–Okt)", getWishesForBlocks(["E1_I1", "E1_I2", "E1_K", "E1_IN"]))}
-        ${renderWishColumn("2. Periode (Okt–Dec)", getWishesForBlocks(["E2_I1", "E2_I2", "E2_K", "E2_IN"]))}
+        ${renderWishColumn("1. Periode (Aug–Okt)", ["E1_I1", "E1_I2", "E1_K", "E1_IN"])}
+        ${renderWishColumn("2. Periode (Okt–Dec)", ["E2_I1", "E2_I2", "E2_K", "E2_IN"])}
       </div>
     `;
   }
@@ -839,91 +1084,136 @@ function renderTeacherProfile() {
       }).join("")
     : `<div class="course-item" style="cursor:default;margin-top:6px;"><span class="c-empty">Ingen gennemgående fag tildelt</span></div>`;
 
-  const renderMiniItems = (arr) => arr.length
-    ? arr.map(ac => {
-        const blk = blocks.find(b => b.id === ac.blockId);
-        const cIdx = blk ? blk.courses.findIndex(c => c.name === ac.name) : -1;
-        const courseObj = (blk && cIdx >= 0) ? blk.courses[cIdx] : null;
-        const isLocked = courseObj ? (courseObj.assignments || []).some(a => a.teacher === tid && a.locked) : false;
+  const renderBlockSlotGroup = (blockId, fallbackLabel) => {
+    const blk = blocks.find(b => b.id === blockId);
+    const blkTitle = blk ? blk.name : fallbackLabel;
+    const assignedInBlock = m.assignedCourses.filter(ac => ac.blockId === blockId);
 
-        const isPrio1 = courseObj ? (courseObj.wishes1 || []).includes(tid) : false;
-        const isPrio2 = courseObj ? (courseObj.wishes2 || []).includes(tid) : false;
-
-        const prioClass = isPrio1 ? "has-prio-1" : isPrio2 ? "has-prio-2" : "has-prio-none";
-        const prioBadge = isPrio1
-          ? `<span class="prio-pill prio-1" title="1. prioritet i ønskearket">1. prio</span>`
-          : isPrio2
-            ? `<span class="prio-pill prio-2" title="2. prioritet i ønskearket">2. prio</span>`
-            : `<span class="prio-pill prio-none" title="Ikke blandt lærerens ønsker">Ej prio</span>`;
-
-        const coTeachers = courseObj
-          ? (courseObj.assignments || []).filter(a => a.teacher !== tid).map(a => a.teacher)
-          : [];
-        const sharing = courseObj ? getCourseSharing(courseObj) : { splitType: "split" };
-        const isDouble = sharing.splitType === "double";
-
-        const coTeacherHtml = coTeachers.length
-          ? `<span class="co-teacher-pill ${isDouble ? "is-double" : ""}"
-               title="${isDouble ? "Parallelhold sammen med" : "Delt fag med"} ${coTeachers.join(", ")}">
-               ${isDouble ? "👥" : "🤝"} ${coTeachers.join(", ")}
-             </span>`
-          : "";
-
-        return `
-          <div class="course-item profile-course-trigger profile-mini-card ${prioClass}"
-            data-block-id="${ac.blockId}" data-course-idx="${cIdx}"
-            title="Klik for at redigere timetal, deling/dublering eller lås på ${ac.name}"
-            style="cursor:pointer;">
-            <div class="profile-mini-left">
-              <span class="profile-mini-eyebrow">${ac.blockName}</span>
-              <span class="c-name">${ac.name}</span>
-            </div>
-            <div class="profile-mini-right">
-              ${prioBadge}
-              ${coTeacherHtml}
-              <span class="t-badge ${isLocked ? "is-locked" : ""}">${isLocked ? "🔒 " : ""}${formatNum(ac.hours)}t ✏️</span>
-            </div>
+    if (!assignedInBlock.length) {
+      return `
+        <div class="course-item profile-block-picker profile-mini-card"
+          data-block-id="${blockId}"
+          title="Klik for at vælge et fag i ${blkTitle} og tildele ${tid}"
+          style="cursor:pointer;margin-top:6px;border-style:dashed;opacity:0.9;">
+          <div class="profile-mini-left">
+            <span class="profile-mini-eyebrow">${blkTitle}</span>
+            <span class="c-empty" style="padding:0;">+ Tilføj fag i ${blkTitle.split("•")[0].trim()}</span>
           </div>
-        `;
-      }).join("")
-    : `<div class="c-empty" style="padding:6px 4px;">Ingen fag tildelt</div>`;
+          <div class="profile-mini-right">
+            <span class="c-empty" style="padding:0;">Vælg fag ↗</span>
+          </div>
+        </div>
+      `;
+    }
+
+    return assignedInBlock.map(ac => {
+      const cIdx = blk ? blk.courses.findIndex(c => c.name === ac.name) : -1;
+      const courseObj = (blk && cIdx >= 0) ? blk.courses[cIdx] : null;
+      const isLocked = courseObj ? (courseObj.assignments || []).some(a => a.teacher === tid && a.locked) : false;
+
+      const isPrio1 = courseObj ? (courseObj.wishes1 || []).includes(tid) : false;
+      const isPrio2 = courseObj ? (courseObj.wishes2 || []).includes(tid) : false;
+
+      const prioClass = isPrio1 ? "has-prio-1" : isPrio2 ? "has-prio-2" : "has-prio-none";
+      const prioBadge = isPrio1
+        ? `<span class="prio-pill prio-1" title="1. prioritet i ønskearket">1. prio</span>`
+        : isPrio2
+          ? `<span class="prio-pill prio-2" title="2. prioritet i ønskearket">2. prio</span>`
+          : `<span class="prio-pill prio-none" title="Ikke blandt lærerens ønsker">Ej prio</span>`;
+
+      const coTeachers = courseObj
+        ? (courseObj.assignments || []).filter(a => a.teacher !== tid).map(a => a.teacher)
+        : [];
+      const sharing = courseObj ? getCourseSharing(courseObj) : { splitType: "split" };
+      const isDouble = sharing.splitType === "double";
+
+      const coTeacherHtml = coTeachers.length
+        ? `<span class="co-teacher-pill ${isDouble ? "is-double" : ""}"
+             title="${isDouble ? "Parallelhold sammen med" : "Delt fag med"} ${coTeachers.join(", ")}">
+             ${isDouble ? "👥" : "🤝"} ${coTeachers.join(", ")}
+           </span>`
+        : "";
+
+      const miniNoteHtml = courseObj?.note
+        ? `<span class="hint" style="margin-left:5px;font-style:italic;opacity:0.88;">— ${courseObj.note}</span>`
+        : "";
+
+      return `
+        <div class="course-item profile-course-trigger profile-mini-card ${prioClass}"
+          data-block-id="${ac.blockId}" data-course-idx="${cIdx}"
+          title="Klik for at redigere timetal, deling/dublering eller lås på ${ac.name}${courseObj?.note ? " — " + courseObj.note : ""}"
+          style="cursor:pointer;margin-top:6px;">
+          <div class="profile-mini-left">
+            <span class="profile-mini-eyebrow">${ac.blockName}</span>
+            <span class="c-name">${ac.name}${miniNoteHtml}</span>
+          </div>
+          <div class="profile-mini-right">
+            ${prioBadge}
+            ${coTeacherHtml}
+            <span class="t-badge ${isLocked ? "is-locked" : ""}">${isLocked ? "🔒 " : ""}${formatNum(ac.hours)}t ✏️</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  };
 
   let periodGridHtml = "";
   if (currentSem === "F2026") {
-    const p1 = m.assignedCourses.filter(ac => ["F1_I1", "F1_I2"].includes(ac.blockId));
-    const p2 = m.assignedCourses.filter(ac => ["F2_I1", "F2_I2"].includes(ac.blockId));
-    const p3 = m.assignedCourses.filter(ac => ["F3_I1", "F3_I2"].includes(ac.blockId));
-    const k1 = m.assignedCourses.filter(ac => ["F1_K", "F1_IN"].includes(ac.blockId));
-    const k2 = m.assignedCourses.filter(ac => ["F2_K", "F2_IN"].includes(ac.blockId));
-
     periodGridHtml = `
       <div class="timeline-grid cols-6" style="margin-top:12px;">
         <div class="col-header span-2">Forår 1 (Jan–Feb)</div>
         <div class="col-header span-2">Forår 2 (Mar–Apr)</div>
         <div class="col-header span-2">Forår 3 (Maj–Jun)</div>
-        <div class="block-col block-span-2">${renderMiniItems(p1)}</div>
-        <div class="block-col block-span-2">${renderMiniItems(p2)}</div>
-        <div class="block-col block-span-2">${renderMiniItems(p3)}</div>
+        <div class="block-col block-span-2">
+          ${renderBlockSlotGroup("F1_I1", "IDRÆT 1 • Forår 1")}
+          ${renderBlockSlotGroup("F1_I2", "IDRÆT 2 • Forår 1")}
+        </div>
+        <div class="block-col block-span-2">
+          ${renderBlockSlotGroup("F2_I1", "IDRÆT 1 • Forår 2")}
+          ${renderBlockSlotGroup("F2_I2", "IDRÆT 2 • Forår 2")}
+        </div>
+        <div class="block-col block-span-2">
+          ${renderBlockSlotGroup("F3_I1", "IDRÆT 1 • Forår 3")}
+          ${renderBlockSlotGroup("F3_I2", "IDRÆT 2 • Forår 3")}
+        </div>
 
         <div class="col-header span-3">Kompetence & Inspiration • Del 1 (Jan–Mar)</div>
         <div class="col-header span-3">Kompetence & Inspiration • Del 2 (Apr–Jun)</div>
-        <div class="block-col block-span-3">${renderMiniItems(k1)}</div>
-        <div class="block-col block-span-3">${renderMiniItems(k2)}</div>
+        <div class="block-col block-span-3">
+          ${renderBlockSlotGroup("F1_K", "KOMPETENCEFAG • Del 1")}
+          ${renderBlockSlotGroup("F1_IN", "INSPIRATIONSFAG • Del 1")}
+        </div>
+        <div class="block-col block-span-3">
+          ${renderBlockSlotGroup("F2_K", "KOMPETENCEFAG • Del 2")}
+          ${renderBlockSlotGroup("F2_IN", "INSPIRATIONSFAG • Del 2")}
+        </div>
       </div>
     `;
   } else {
-    const e1 = m.assignedCourses.filter(ac => ac.blockId.startsWith("E1_"));
-    const e2 = m.assignedCourses.filter(ac => ac.blockId.startsWith("E2_"));
-
     periodGridHtml = `
       <div class="timeline-grid cols-4" style="margin-top:12px;">
         <div class="col-header span-2">1. Periode (Aug–Okt)</div>
         <div class="col-header span-2">2. Periode (Okt–Dec)</div>
-        <div class="block-col block-span-2">${renderMiniItems(e1)}</div>
-        <div class="block-col block-span-2">${renderMiniItems(e2)}</div>
+        <div class="block-col block-span-2">
+          ${renderBlockSlotGroup("E1_I1", "IDRÆT 1 • 1. Periode")}
+          ${renderBlockSlotGroup("E1_I2", "IDRÆT 2 • 1. Periode")}
+          ${renderBlockSlotGroup("E1_K", "KOMPETENCEFAG • 1. Periode")}
+          ${renderBlockSlotGroup("E1_IN", "INSPIRATIONSFAG • 1. Periode")}
+        </div>
+        <div class="block-col block-span-2">
+          ${renderBlockSlotGroup("E2_I1", "IDRÆT 1 • 2. Periode")}
+          ${renderBlockSlotGroup("E2_I2", "IDRÆT 2 • 2. Periode")}
+          ${renderBlockSlotGroup("E2_K", "KOMPETENCEFAG • 2. Periode")}
+          ${renderBlockSlotGroup("E2_IN", "INSPIRATIONSFAG • 2. Periode")}
+        </div>
       </div>
     `;
   }
+
+  const semCsvCounts = lastCsvWishCounts[currentSem];
+  const csvStatusNote = semCsvCounts
+    ? `<div class="hint" style="margin-bottom:8px;">Seneste CSV-import (${sem.label}): <strong>${semCsvCounts[tid] || 0}</strong> matchede ønsker for ${tid}.</div>`
+    : "";
 
   contentEl.innerHTML = `
     <div class="profile-grid">
@@ -939,6 +1229,7 @@ function renderTeacherProfile() {
 
       <div class="profile-card">
         <h3>💬 ${tid}'s egne fagønsker (${sem.label}) <span class="hint" style="font-weight:400;">(klik for at åbne fag)</span></h3>
+        ${csvStatusNote}
         ${wishesPeriodHtml}
         ${teacher.wishNotes ? `<p style="margin-top:10px;font-size:12.5px;color:#fde68a;">📝 Bemærkning fra ønskeark: "${teacher.wishNotes}"</p>` : ""}
       </div>
@@ -946,7 +1237,7 @@ function renderTeacherProfile() {
 
     <div class="profile-card" style="margin-top:16px;">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;">
-        <h3 style="margin:0;">📅 ${tid}'s skema & timer pr. periode (${sem.label}) <span class="hint" style="font-weight:400;">(klik på et fag for at redigere)</span></h3>
+        <h3 style="margin:0;">📅 ${tid}'s skema & timer pr. periode (${sem.label}) <span class="hint" style="font-weight:400;">(klik på et fag for at redigere eller på en tom blok for at tilføje)</span></h3>
         <span class="hint">Spænd: <strong>${formatNum(m.bounds.minAcceptable)}–${formatNum(m.bounds.maxAcceptable)} t/uge</strong> (Mål: ${formatNum(teacher.targetWeekly)}t) • Gns. nu: <strong>${formatNum(m.avgWeekly)} t/uge</strong></span>
       </div>
       <div class="phase-bars">${phaseBoxesHtml}</div>
@@ -973,6 +1264,18 @@ function renderTeacherProfile() {
       const course = block && cIdx >= 0 ? block.courses[cIdx] : null;
       if (block && course) {
         openCourseModal(course, block.name, block);
+      }
+    };
+  });
+
+  contentEl.querySelectorAll(".profile-block-picker").forEach(el => {
+    el.onclick = () => {
+      const blockId = el.dataset.blockId;
+      const block = blocks.find(b => b.id === blockId);
+      if (!block) return;
+      const firstActive = block.courses.find(c => !c.isCanceled) || block.courses[0];
+      if (firstActive) {
+        openCourseModal(firstActive, block.name, block, { preselectTeacherId: tid, showBlockRoster: true });
       }
     };
   });
@@ -1113,6 +1416,21 @@ function renderTeachersTab() {
       .map(ph => `${ph.label}: <strong>${formatNum(m.phaseHours[ph.id])}t</strong>`)
       .join(" • ");
 
+    const leaveSet = new Set(t.leavePhases?.[currentSem] || []);
+    const leaveTogglesHtml = sem.phases.map(ph => {
+      const active = leaveSet.has(ph.id);
+      return `
+        <button type="button"
+          class="diag-chip leave-phase-btn"
+          data-tid="${t.id}"
+          data-phase="${ph.id}"
+          style="cursor:pointer;font-size:11px;padding:2px 6px;${active ? "border-color:var(--warn);color:#fde68a;background:rgba(245,158,11,0.16);" : "opacity:0.75;"}"
+          title="Klik for at slå orlov til/fra i ${ph.label}">
+          ${active ? "🏖️ " : ""}${ph.label}
+        </button>
+      `;
+    }).join(" ");
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${t.id}</strong></td>
@@ -1121,7 +1439,10 @@ function renderTeachersTab() {
       <td>${formatNum(totalSpecialYear)} t (${currentSem}: ${formatNum(m.specialUv)} t)</td>
       <td><input type="number" step="0.1" value="${t.targetWeekly}" data-tid="${t.id}" class="input-field tiny-input norm-input" /></td>
       <td><strong>${formatNum(m.avgWeekly)} t/uge</strong></td>
-      <td style="font-size:12px;">${phaseBreakdown}</td>
+      <td style="font-size:12px;">
+        <div>${phaseBreakdown}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">${leaveTogglesHtml}</div>
+      </td>
       <td><input type="text" value="${t.note || ""}" data-tid="${t.id}" class="input-field note-input" placeholder="Orlov / note..." /></td>
     `;
     tbody.appendChild(tr);
@@ -1138,6 +1459,21 @@ function renderTeachersTab() {
     inp.onchange = () => {
       const t = state.teachers.find(x => x.id === inp.dataset.tid);
       if (t) { t.note = inp.value; saveState(); }
+    };
+  });
+
+  tbody.querySelectorAll(".leave-phase-btn").forEach(btn => {
+    btn.onclick = () => {
+      const tObj = state.teachers.find(x => x.id === btn.dataset.tid);
+      if (!tObj) return;
+      tObj.leavePhases = tObj.leavePhases || {};
+      const curList = tObj.leavePhases[currentSem] || [];
+      const phId = btn.dataset.phase;
+      tObj.leavePhases[currentSem] = curList.includes(phId)
+        ? curList.filter(id => id !== phId)
+        : [...curList, phId];
+      saveState();
+      renderAll();
     };
   });
 
@@ -1173,7 +1509,7 @@ if (btnAddSpecial) {
 // ==========================================
 // 5. MODAL FOR FAG-TILDELING (1-3 LÆRERE & DELING/DUBLERING)
 // ==========================================
-function openCourseModal(course, periodTitle, block) {
+function openCourseModal(course, periodTitle, block, opts = {}) {
   activeCourseRef = { course, block };
   document.getElementById("modal-block-tag").textContent = `${periodTitle} • ${formatNum(course.hours)} t/uge`;
   document.getElementById("modal-course-title").textContent = course.name;
@@ -1182,9 +1518,25 @@ function openCourseModal(course, periodTitle, block) {
   const cancelEl = document.getElementById("modal-canceled");
   if (cancelEl) cancelEl.checked = !!course.isCanceled;
 
+  const titleEl = document.getElementById("modal-course-title");
+  let noteInput = document.getElementById("modal-course-note");
+  if (!noteInput && titleEl && titleEl.parentElement) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "margin:6px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+    wrap.innerHTML = `
+      <label for="modal-course-note" class="hint" style="font-size:11.5px;white-space:nowrap;">Notat efter navn:</label>
+      <input type="text" id="modal-course-note" class="input-field" style="flex:1;min-width:180px;padding:5px 8px;font-size:12.5px;" placeholder="F.eks. Keramik eller bålhygge..." />
+    `;
+    titleEl.insertAdjacentElement("afterend", wrap);
+    noteInput = document.getElementById("modal-course-note");
+  }
+  if (noteInput) noteInput.value = course.note || "";
+
   const sel1 = document.getElementById("modal-teacher-1");
   const sel2 = document.getElementById("modal-teacher-2");
   const sel3 = document.getElementById("modal-teacher-3");
+
+  const defaultT1 = course.assignments[0]?.teacher || opts.preselectTeacherId || "";
 
   const makeOpts = (selectedId) => {
     let html = `<option value="">-- Vælg lærer --</option>`;
@@ -1201,7 +1553,7 @@ function openCourseModal(course, periodTitle, block) {
     return html;
   };
 
-  if (sel1) sel1.innerHTML = makeOpts(course.assignments[0]?.teacher || "");
+  if (sel1) sel1.innerHTML = makeOpts(defaultT1);
   if (sel2) sel2.innerHTML = makeOpts(course.assignments[1]?.teacher || "");
   if (sel3) sel3.innerHTML = makeOpts(course.assignments[2]?.teacher || "");
 
@@ -1218,6 +1570,46 @@ function openCourseModal(course, periodTitle, block) {
   const candEl = document.getElementById("modal-candidates-list");
   if (candEl) {
     candEl.innerHTML = "";
+
+    if (block && Array.isArray(block.courses) && block.courses.length > 0) {
+      const rosterBox = document.createElement("div");
+      rosterBox.style.cssText = "width:100%;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(15,23,42,0.55);border:1px solid var(--border-subtle);";
+      rosterBox.innerHTML = `<div class="hint" style="margin-bottom:6px;font-weight:700;">Fag i ${periodTitle} (klik for at skifte fag):</div>`;
+
+      const listDiv = document.createElement("div");
+      listDiv.style.cssText = "display:flex;flex-direction:column;gap:5px;max-height:175px;overflow:auto;";
+
+      block.courses.forEach(bc => {
+        const sharingInfo = getCourseSharing(bc);
+        const missing = bc.isCanceled ? 0 : Math.max(0, sharingInfo.teacherCount - (bc.assignments || []).length);
+        const rowBtn = document.createElement("button");
+        rowBtn.type = "button";
+        rowBtn.className = "course-item";
+        rowBtn.style.cssText = `width:100%;text-align:left;cursor:pointer;${bc === course ? "border-color:var(--accent-orange);background:rgba(249,115,22,0.12);" : ""}`;
+
+        const assignedBadges = bc.isCanceled
+          ? `<span class="c-canceled-badge">🚫 Aflyst</span>`
+          : [
+              ...(bc.assignments || []).map(a => `<span class="t-badge ${a.locked ? "is-locked" : ""}">${a.locked ? "🔒 " : ""}${a.teacher} (${formatNum(a.hours)}t)</span>`),
+              ...Array.from({ length: missing }, (_, idx) => `<span class="c-empty">${sharingInfo.teacherCount > 1 ? `+ Lærer ${(bc.assignments || []).length + idx + 1}` : "+ Tildel"}</span>`)
+            ].join("");
+
+        const bcNoteHtml = bc.note
+          ? `<span class="hint" style="margin-left:5px;font-style:italic;opacity:0.88;">— ${bc.note}</span>`
+          : "";
+
+        rowBtn.innerHTML = `
+          <span class="c-name">${bc.name}${bcNoteHtml}</span>
+          <span class="c-teachers">${assignedBadges}</span>
+        `;
+        rowBtn.onclick = () => openCourseModal(bc, periodTitle, block, opts);
+        listDiv.appendChild(rowBtn);
+      });
+
+      rosterBox.appendChild(listDiv);
+      candEl.appendChild(rosterBox);
+    }
+
     const compInfo = normalizeCompetencyEntry(state.competencies[course.name]);
     const candIds = new Set([
       ...compInfo.leads,
@@ -1228,7 +1620,10 @@ function openCourseModal(course, periodTitle, block) {
     ]);
 
     if (candIds.size === 0) {
-      candEl.innerHTML = `<span class="hint">Ingen forhåndsregistrerede ønsker eller kompetencer på dette fag.</span>`;
+      const hintSpan = document.createElement("span");
+      hintSpan.className = "hint";
+      hintSpan.textContent = "Ingen forhåndsregistrerede ønsker eller kompetencer på dette fag.";
+      candEl.appendChild(hintSpan);
     } else {
       candIds.forEach(tid => {
         const lvl = getCompetencyLevel(state.competencies, course.name, tid);
@@ -1340,6 +1735,10 @@ if (modalSaveBtn) {
     const cancelEl = document.getElementById("modal-canceled");
     course.isCanceled = cancelEl ? cancelEl.checked : false;
 
+    const noteVal = (document.getElementById("modal-course-note")?.value || "").trim();
+    if (noteVal) course.note = noteVal;
+    else delete course.note;
+
     course.assignments = [];
     if (t1) course.assignments.push({ teacher: t1, hours: h1, locked: lock1 });
     if (modalTeacherCount >= 2 && t2) course.assignments.push({ teacher: t2, hours: h2, locked: lock2 });
@@ -1407,7 +1806,6 @@ function parseDelimitedText(text) {
 function applyWishesFromCsvText(text, targetSem) {
   const rows = parseDelimitedText(text);
 
-  // Understøtter både "AB/10,5" i én celle OG "AB" på én række med "10,5" på rækken lige under
   let headerIdx = rows.findIndex(r => r.filter(cell => /^[A-ZÆØÅ]{2,4}\/[\d,.]+$/.test(cell)).length >= 2);
   let splitNormRow = false;
 
@@ -1460,11 +1858,11 @@ function applyWishesFromCsvText(text, targetSem) {
   sem.dglConfig.wishes = [];
   sem.sangConfig.wishes = [];
 
+  const countsBySem = {};
   const sectionPeriod = {}, sectionBlock = {}, sectionPrio = {};
   const startRow = headerIdx + (hasSeparateNormRow ? 2 : 1);
 
   rows.slice(startRow).forEach(r => {
-    // Læs kun periode-, blok- og prioritets-overskrifter fra label-kolonner (ikke lærernes kommentarer)
     r.forEach((cell, colIdx) => {
       if (colTeacherMap[colIdx]) return;
       const sec = colSections[colIdx] || 0;
@@ -1494,11 +1892,17 @@ function applyWishesFromCsvText(text, targetSem) {
       const sec = info.section, tid = info.tid, blkType = sectionBlock[sec];
 
       if (blkType === "DGL" && val.toLowerCase().startsWith("ja")) {
-        if (!sem.dglConfig.wishes.includes(tid)) sem.dglConfig.wishes.push(tid);
+        if (!sem.dglConfig.wishes.includes(tid)) {
+          sem.dglConfig.wishes.push(tid);
+          countsBySem[tid] = (countsBySem[tid] || 0) + 1;
+        }
         return;
       }
       if (blkType === "SANG" && val.toLowerCase().startsWith("ja")) {
-        if (!sem.sangConfig.wishes.includes(tid)) sem.sangConfig.wishes.push(tid);
+        if (!sem.sangConfig.wishes.includes(tid)) {
+          sem.sangConfig.wishes.push(tid);
+          countsBySem[tid] = (countsBySem[tid] || 0) + 1;
+        }
         return;
       }
 
@@ -1515,12 +1919,23 @@ function applyWishesFromCsvText(text, targetSem) {
       targetBlock.courses.forEach(c => {
         const cleanC = cleanCourseTitle(c.name);
         if (cleanC && cleanVal && (cleanC.includes(cleanVal) || cleanVal.includes(cleanC))) {
-          if (prio === 2) { if (!c.wishes2.includes(tid)) c.wishes2.push(tid); }
-          else { if (!c.wishes1.includes(tid)) c.wishes1.push(tid); }
+          if (prio === 2) {
+            if (!c.wishes2.includes(tid)) {
+              c.wishes2.push(tid);
+              countsBySem[tid] = (countsBySem[tid] || 0) + 1;
+            }
+          } else {
+            if (!c.wishes1.includes(tid)) {
+              c.wishes1.push(tid);
+              countsBySem[tid] = (countsBySem[tid] || 0) + 1;
+            }
+          }
         }
       });
     });
   });
+
+  lastCsvWishCounts[targetSem] = countsBySem;
 }
 
 function flashButtonFeedback(btn, label, isError = false) {
@@ -1660,7 +2075,11 @@ document.getElementById("btn-unlock-all").onclick = () => {
 };
 
 document.getElementById("btn-export-plan").onclick = () => {
-  downloadJson(state, `plan.json`);
+  const planOnly = {
+    semesters: state.semesters,
+    diagnosticsCollapsed: state.diagnosticsCollapsed
+  };
+  downloadJson(planOnly, `plan.json`);
 };
 
 const btnExportSettings = document.getElementById("btn-export-settings");
@@ -1697,8 +2116,10 @@ if (inputImportJson) {
       try {
         const parsed = JSON.parse(reader.result);
         if (parsed.semesters) {
-          parsed.competencies = normalizeAllCompetencies(parsed.competencies);
-          state = parsed;
+          state.semesters = parsed.semesters;
+          if (typeof parsed.diagnosticsCollapsed === "boolean") {
+            state.diagnosticsCollapsed = parsed.diagnosticsCollapsed;
+          }
           saveState();
           setDataSourceStatus("plan");
           if (statusEl) statusEl.textContent = `✅ Arbejdsplan indlæst`;
